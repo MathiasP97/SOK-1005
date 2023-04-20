@@ -1,0 +1,160 @@
+---
+title: "20-Assignment-4"
+format: html
+editor: visual
+kandidatnr: "20"
+---
+
+# Task 1
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(rvest)
+library(janitor) 
+library(lubridate) 
+library(quantmod)
+library(zoo)
+library(xts)
+library(ggplot2)
+library(hrbrthemes)
+library(jsonlite)
+library(knitr)
+library(httr)
+library(jsonlite)
+```
+
+```{r}
+storedata <- read.csv("https://raw.githubusercontent.com/uit-sok-1005-v23/uit-sok-1005-v23.github.io/main/storedata.csv") %>% 
+  clean_names()
+
+dftable1 <- storedata
+
+dftable1 <- dftable1[,-c(-2,-4,-5,-7,-9)]
+
+dftable1 <- dftable1 %>%
+  mutate(year = year(order_date),
+         month = month(order_date),
+         day = day(order_date))
+
+dftable1 <- dftable1[,-c(-2,-3,-4,-5,-6,-7)]
+
+dftable1 <- dftable1 %>%
+  filter(year > 2016) %>%
+  filter(month > 9)
+
+dftable1 <- dftable1 %>%
+  filter(region %in% c("Region 1", "Region 9")) %>%
+  filter(customer_segment %in% c("Consumer", "Corporate"))
+
+dftable1 <- dftable1 %>%
+  group_by(region, month, customer_segment) %>%
+  summarize(total_sales = sum(sales))
+
+dftable1
+```
+
+```{r}
+
+dfplot1 <- storedata
+
+dfplot1 <- dfplot1 %>%
+  filter(region %in% c("Region 1", "Region 13")) %>%
+  mutate(year = year(order_date),
+         month = month(order_date))
+
+dfplot1 <- dfplot1[,-c(-4,-7,-8,-9,-10, -11)] %>%
+  filter(year > 2014) %>%
+   group_by(region, month, year) %>%
+  summarize(total_sales = sum(sales))
+
+```
+
+```{r}
+dfplot1 %>%
+  ggplot(aes(x=month, y=total_sales)) +
+  geom_col(aes(fill=region), position="dodge") +
+  ggtitle("Total sales 2015-2017") +
+  facet_wrap(~year, nrow=3) +
+  theme(legend.position="right")
+```
+
+```{r}
+
+dftable2 <- dfplot1[c(41,50,52,54,61,67,71), ]
+
+dftable2
+```
+
+```{r}
+
+dftable3 <- storedata
+
+dftable3 <- dftable3 %>%
+  filter(region %in% c("Region 1", "Region 2", "Region 4", "Region 6", "Region 7", "Region 9", "Region 10", "Region 11", "Region 12", "Region 13")) %>%
+  mutate(year = year(order_date),
+         month = month(order_date))
+
+dftable3 <- dftable3[,c(-1,-2,-3,-4,-6,-11)] %>%
+   filter(year > 2016) %>%
+  group_by(customer_segment, product_category, region) %>%
+  summarize(average_profit = mean(profit))
+
+
+
+
+dftable3
+```
+
+The small business customer segment with technology as its product category from region 11 had the highest average profit out of all segments and regions with an average profit of 3585.120.
+
+# Task 2
+
+```{r}
+
+xom <- data.frame(getSymbols("XOM", src = "yahoo", from = "2010-1-04", to = "2022-12-31", auto.assign = FALSE))           
+
+xom <- tibble::rownames_to_column(xom, var = "Date")
+
+xom <- xom %>%
+  mutate(year = year(Date)) %>%
+  mutate(month = month(Date)) %>%
+  group_by(year, month) %>%
+  summarize(exxon = weighted.mean(XOM.Adjusted, XOM.Volume))
+```
+
+```{r}
+
+crudeoil <- data.frame(getSymbols("DCOILBRENTEU", src = "FRED", from = "2010-1-04", to = "2022-12-31", auto.assign = FALSE))
+
+crudeoil <- tibble::rownames_to_column(crudeoil, var = "Date") %>%
+  filter(Date >= "2010-01-04" & Date < "2022-12-01")
+
+
+crudeoil <- crudeoil %>%
+  mutate(year = year(Date)) %>%
+  mutate(month = month(Date)) %>%
+  group_by(year, month) %>%
+  summarize(oil= mean(DCOILBRENTEU)) %>%
+  na.omit(crudeoil$oil)
+```
+
+```{r}
+dfoil <- merge(xom, crudeoil)
+
+
+lm(dfoil$exxon ~ dfoil$oil, dfoil)
+```
+
+```{r}
+
+ggplot() + 
+  geom_line(data = crudeoil ,aes(x=year,y=oil, col = "oil")) +
+  geom_line(data = xom,aes(x=year,y=exxon,col="exxon")) +
+  geom_abline(slope=1, color="purple") +
+  geom_smooth(metod = lm) +
+  xlab("Date") + ylab("Price USD") + ggtitle("The mean of Oil and Exxon") +
+  theme_bw()
+```
+
+The LM functions coefficientes: intercepts shows us the value of exxon when oil is valued to be 0. The other coefficientes shows us that whenever the oil prices is increased by 1, exxons value increases by 0.1694. This indicates that exxon's share prices has a positively linear relationship with the oil prices. This means that the higher the oil price is, the higher exxons share are valued. They are linked towards eachother as exxon is a oil and gas company and their buisness is heavily realiant on the oil prices.

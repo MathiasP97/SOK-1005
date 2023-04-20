@@ -1,0 +1,120 @@
+---
+title: "Global Temperature - Assignment 1"
+format: html
+editor: visual
+class: "SOK-1005"
+kandidatnr: "20"
+---
+
+```{r}
+
+#Installing packages
+rm(list=ls())
+
+library(tidyverse)
+library(broom)
+library(zoo)
+library(data.table)
+library(readr)
+library(dplyr)
+```
+
+```{r}
+#Importing and converting to numeric.
+df_lowtropos <- read_table2("https://www.nsstc.uah.edu/data/msu/v6.0/tlt/uahncdc_lt_6.0.txt")
+
+df_lowtropos <- df_lowtropos[1:which
+(df_lowtropos$Year %in% "Year")-1, ] %>%
+  mutate_at(vars(Globe, Land, Ocean), ~as.numeric(.))
+
+
+
+df_midtropos <- read_table2("http://vortex.nsstc.uah.edu/data/msu/v6.0/tmt/uahncdc_mt_6.0.txt")
+
+df_midtropos <- df_midtropos[1:which
+(df_midtropos$Year %in% "Year")-1, ] %>%
+  mutate_at(vars(Globe, Land, Ocean), ~as.numeric(.))
+
+
+
+df_tropopause <- read_table2("http://vortex.nsstc.uah.edu/data/msu/v6.0/ttp/uahncdc_tp_6.0.txt")
+
+df_tropopause <- df_tropopause[1:which
+(df_tropopause$Year %in% "Year")-1, ] %>%
+  mutate_at(vars(Globe, Land, Ocean), ~as.numeric(.))
+
+
+
+df_lowstratos <- read_table2("http://vortex.nsstc.uah.edu/data/msu/v6.0/tls/uahncdc_ls_6.0.txt")
+
+df_lowstratos <- df_lowstratos[1:which
+(df_lowstratos$Year %in% "Year")-1, ] %>%
+  mutate_at(vars(Globe, Land, Ocean), ~as.numeric(.))
+```
+
+```{r}
+#Filtering and grouping by year, while summarizing the four given atmospheric vectors to get the global mean and arranging them into their own data frames.
+
+df_lowtroposmean <- df_lowtropos %>%
+  filter(Year > 1979) %>%
+  select(Year, Mo, Globe) %>%
+  group_by(Year) %>%
+  summarize(LowtroposGlobalMean = mean(Globe)) %>%
+  mutate(Average = rollmean(LowtroposGlobalMean, 1:44, allign = right))
+
+df_midtroposmean <- df_midtropos %>%
+  filter(Year > 1979) %>%
+  select(Year, Mo, Globe) %>%
+  group_by(Year) %>%
+  summarize(MidtroposGlobalMean = mean(Globe)) %>%
+  mutate(Average = rollmean(MidtroposGlobalMean, 1:44, allign = right))
+
+df_tropopausemean <- df_tropopause %>%
+  filter(Year > 1979) %>%
+  select(Year, Mo, Globe) %>%
+  group_by(Year) %>%
+  summarize(TropopauseGlobalMean = mean(Globe)) %>%
+  mutate(Average = rollmean(TropopauseGlobalMean, 1:44, allign = right))
+
+df_lowstratosmean <- df_lowstratos %>%
+  filter(Year > 1979) %>%
+  select(Year, Mo, Globe) %>%
+  group_by(Year) %>%
+  summarize(LowstratosGlobalMean = mean(Globe)) %>%
+  mutate(Average = rollmean(LowstratosGlobalMean, 1:44, allign = right))
+
+```
+
+```{r}
+
+#Adding the desired values from the different atmospheric vectors into one data frame.
+
+df_tidy = df_lowtroposmean %>%
+  cbind(df_midtroposmean$MidtroposGlobalMean) %>%
+  cbind(df_midtroposmean$Average) %>%
+  cbind(df_tropopausemean$TropopauseGlobalMean) %>%
+  cbind(df_tropopausemean$Average) %>%
+  cbind(df_lowstratosmean$LowstratosGlobalMean) %>%
+  cbind(df_lowstratosmean$Average)
+
+```
+
+```{r}
+#Renaming the values that we added into the df_tidy so that when its plottet its easier to read/nicer to look at.
+names(df_tidy) <- c("Year", "LowTroGM", "LowTroA", "MidTroGM", "MidTroA", "TropoGM", "TropoA", "LowStraGM", "LowStraA")
+```
+
+```{r}
+#Plotting the desired values with the years so we get an overall visual
+df_longer <- df_tidy %>%
+  pivot_longer(- Year, names_to = "Var", values_to = "Values")
+
+df_longer %>%
+  ggplot(aes(x=Year, y=Values, color=Var)) +
+  geom_line(col="blue") + geom_point(col="blue") +
+  ggtitle("Temperature changes in the atmosphere over the last 45 years") +
+  geom_smooth(na.rm=FALSE, show.legend = TRUE) +
+  geom_point() +
+  geom_hline(yintercept = mean(df_longer$Values, na.rm = TRUE)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.6, hjust=1))
+```

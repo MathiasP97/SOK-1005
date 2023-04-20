@@ -1,0 +1,72 @@
+---
+title: "20-Assignment-2"
+format: html
+editor: visual
+kandidatnr: "20"
+---
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(rvest)
+library(janitor) 
+library(lubridate) 
+library(quantmod)
+library(zoo)
+library(xts)
+library(ggplot2)
+library(hrbrthemes)
+```
+
+```{r}
+
+
+url <- "https://www.motor.no/aktuelt/motors-store-vintertest-av-rekkevidde-pa-elbiler/217132"
+motor <- read_html(url)
+df_motor <- url %>% 
+  read_html() %>% 
+  html_element("table") %>% 
+  html_table() %>% 
+  row_to_names(row_number = 1)
+```
+
+```{r}
+df_motor <- df_motor[c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 27, 28, 29, 30, 31, 32, 33), ]
+```
+
+```{r}
+
+df_motor <- df_motor %>%
+  separate(`WLTP-tall`, into=c("wltp_km", "wltp_kwh"), sep="/") %>% 
+  separate(wltp_km, into="wltp_km", sep=" ")
+```
+
+```{r}
+
+df_motor$STOPP <- gsub("km", "", df_motor$STOPP)
+
+df_motor <- df_motor %>%
+  mutate_at(c("wltp_km" , "STOPP"), as.numeric)
+```
+
+```{r}
+lm(df_motor$STOPP ~ df_motor$wltp_km, df_motor)
+```
+
+```{r}
+
+df_motor %>% 
+  ggplot(aes(x=`wltp_km`, y=STOPP))+
+  geom_point()+
+  geom_abline(slope=1, color="red")+
+  geom_smooth(method = lm)
+  scale_x_continuous(limits = c(200, 700))+
+  scale_y_continuous(limits = c(200, 700))+
+  theme_bw()
+```
+
+The red line represents the advertised kilometer length of the cars, and the blue line represent what the cars performed.
+
+We see that the red line has an increase of 1. And from the LM code we find that the blue line increases with 0.8671, and that the red line and blue line crossed at -26.6450.
+
+So my interpretation of the both the values is that, -26.6450 is where both lines crossed, and that 0.8671 is the blue line's rate of increase. This means that the promised km length of the cars are not what they are advertised to be during winter in Norway.

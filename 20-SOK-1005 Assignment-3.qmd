@@ -1,0 +1,48 @@
+---
+title: "20-Assignment-3"
+format: html
+editor: visual
+kandidatnr: "20"
+---
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(rvest)
+library(janitor) 
+library(lubridate) 
+library(quantmod)
+library(zoo)
+library(xts)
+library(ggplot2)
+library(hrbrthemes)
+library(jsonlite)
+```
+
+# Task 1 & 2
+
+### Done  in the same ggplot.
+
+```{r}
+
+df <-fromJSON("https://static01.nyt.com/newsgraphics/2021/12/20/us-coronavirus-deaths-2021/ff0adde21623e111d8ce103fedecf7ffc7906264/scatter.json")
+```
+
+```{r}
+lm(deaths_per_100k ~ fully_vaccinated_pct_of_pop, df)
+```
+
+```{r}
+df %>%
+  ggplot(aes(x=fully_vaccinated_pct_of_pop, y=deaths_per_100k, label=name))+
+  geom_point()+
+  geom_smooth()+
+  geom_smooth(method = lm, col="blue")+
+  geom_text(hjust=0.5, vjust=0.8, size= 3.25)+
+  scale_x_continuous(labels=scales::percent)+
+  annotate("text", x = 0.58, y = 17, label = "Low vaccination rate, high death rate", col="red")+
+  annotate("text", x = 0.71, y = 11, label = "High vaccination rate, low death rate", col="red")+
+  theme_bw()
+```
+
+# 
